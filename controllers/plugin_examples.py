@@ -3,7 +3,7 @@
 
 from plugin_dataTables import jspaths, plugin_name
 
-def index(): return dict(message="hello from examples.py")
+#def index(): return dict(message="hello from examples.py")
 
 @auth.requires_login()
 def rpadroni():
