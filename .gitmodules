@@ -1,0 +1,3 @@
+[submodule "static/plugin_dataTables/DataTables"]
+	path = static/plugin_dataTables/DataTables
+	url = https://github.com/DataTables/DataTables.git

@@ -34,6 +34,7 @@
 'cache': 'cache',
 'Cache': 'Cache',
 'Cache Keys': 'Cache Keys',
+'Cambia Password': 'Cambia Password',
 'Cannot be empty': 'Non può essere vuoto',
 'Change password': 'Cambia Password',
 'change password': 'Cambia password',
