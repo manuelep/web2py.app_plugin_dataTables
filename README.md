@@ -7,7 +7,7 @@ It contains project files for a web2py plugin plus some demo models and controll
 
 The "plugin_dataTables" is a [web2py framwork plugin][] with the aim of an easier
 integration of the [jQuery][] plugin [DataTables][] in order to use the advanced
-DataTables interface options to browse data coming from every database query.
+DataTables interface options to browse data coming from any database query.
 
 Installation steps
 ==================
