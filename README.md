@@ -41,6 +41,12 @@ git submodule update
 git checkout master
 ```
 
+Plugin integration in applications
+==================================
+
+In order to adopt this plugin in other web2py applications, after installing this
+whole application, you can use the web2py admin interface to download the plugin
+package and upload the files in your app.
 
 [web2py framwork plugin]: http://web2py.com/books/default/chapter/29/12/components-and-plugins#Plugins
 [jQuery]: http://jquery.com/
