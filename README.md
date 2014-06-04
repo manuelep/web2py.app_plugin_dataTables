@@ -23,7 +23,6 @@ git clone git@github.com:manuelep/web2py.app_plugin_dataTables.git app_plugin_da
 
 ```sh
 cd app_plugin_dataTables/
-git branch -v
 git pull origin DataTables
 git checkout DataTables
 ```
@@ -35,7 +34,7 @@ git submodule init
 git submodule update
 ```
 
-#### 4. Back to the branch master
+#### 4. Go back to the branch master
 
 ```sh
 git checkout master

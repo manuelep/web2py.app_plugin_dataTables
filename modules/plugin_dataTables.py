@@ -1,11 +1,29 @@
 #!/usr/bin/env python
 # coding: utf8
 
-from json import loads as jsloads
+##### ~ LICENCE NOTES ~ ########################################################
+#
+#    This file is part of plugin_dataTables.
+#
+#    plugin_dataTables is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    plugin_dataTables is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with plugin_dataTables. If not, see <http://www.gnu.org/licenses/>.
+#
+################################################################################
 
 from gluon import *
 from storage import Storage
 from gluon.dal import Query, Table, Field, FieldMethod, FieldVirtual, SQLALL
+from json import loads as jsloads
 
 plugin_name = 'plugin_dataTables'
 
@@ -17,7 +35,7 @@ jspaths = (
 )
 
 class DataTables(Storage):
-    """ The DataTables name space """
+    """ The DataTables container """
 
     def add(self, name, *args, **kw):
         """ Define new DataTable objects inside DataTables name space
@@ -25,7 +43,9 @@ class DataTables(Storage):
         table {DAL/Table}
         lang {string}
         """
+        # 1. Object definition
         self[name] = DataTable(name, *args, **kw)
+        # 2. DataTables Attributes setting
         self[name]._setAttributes()
 
     def add_by_query(self, name, query, *args, **kw):
@@ -34,19 +54,18 @@ class DataTables(Storage):
         table {DAL/Query}
         table {DAL/Table}
         lang {string}
-        1. definizione
-        2. query selection
-        3. aoColumns
-        4. dt attributes
         """
         table = None if not 'table' in kw else kw.pop('table')
         lang = None if not 'lang' in kw else kw.pop('lang')
+        # 1. Object definition
         self[name] = DataTable(name, table, lang)
+        # 2. Load selection attributes and variables
         self[name].selection(query, *args, **kw)
+        # 3. DataTables Attributes setting
         self[name]._setAttributes()
 
 class DataTable(object):
-    """ """
+    """ The DataTable object class """
 
     attributes = {
         "bJQueryUI": True,
@@ -152,7 +171,7 @@ class DataTable(object):
             **pars["web2py_grid"]
         )
 
-# coutesy of: http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
+# Coutesy of: http://stackoverflow.com/questions/3232943/update-value-of-a-nested-dictionary-of-varying-depth
 def deep_update(d, u):
     for k, v in u.iteritems():
         if isinstance(v, collections.Mapping):
@@ -162,10 +181,9 @@ def deep_update(d, u):
             d[k] = u[k]
     return d
 
+# Courtesy of: http://www.web2pyslices.com/slice/show/1593/class-for-building-db-queries-from-python-dictionaries
 class QueryParser(object):
-    """ Courtesy of: http://www.web2pyslices.com/slice/show/1593/class-for-building-db-queries-from-python-dictionaries
-
-    This class is intended as an interface for reading queries submitted
+    """ This class is intended as an interface for reading queries submitted
     via json or other client protocols
     """
 
