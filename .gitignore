@@ -59,3 +59,4 @@ uploads/
 cache/
 sessions/
 static/plugin_dataTables/DataTables
+modules/plugin_dal_extensions
