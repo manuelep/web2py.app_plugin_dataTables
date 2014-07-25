@@ -21,9 +21,11 @@
 ################################################################################
 
 from gluon import *
-from storage import Storage
-from gluon.dal import Query, Table, Field, FieldMethod, FieldVirtual, SQLALL
+from gluon.storage import Storage
+import collections
 from json import loads as jsloads
+
+from gluon.dal import Field, FieldVirtual
 
 plugin_name = 'plugin_dataTables'
 
@@ -34,106 +36,70 @@ jspaths = (
     URL('static', plugin_name+'/DataTables/media/js/jquery.dataTables.js'),
 )
 
-class DataTables(Storage):
-    """ The DataTables container """
-
-    def add(self, name, *args, **kw):
-        """ Define new DataTable objects inside DataTables name space
-        name {string}
-        table {DAL/Table}
-        lang {string}
-        """
-        # 1. Object definition
-        self[name] = DataTable(name, *args, **kw)
-        # 2. DataTables Attributes setting
-        self[name]._setAttributes()
-
-    def add_by_query(self, name, query, *args, **kw):
-        """ Define new DataTable objects inside DataTables name space
-        name {string}
-        table {DAL/Query}
-        table {DAL/Table}
-        lang {string}
-        """
-        table = None if not 'table' in kw else kw.pop('table')
-        lang = None if not 'lang' in kw else kw.pop('lang')
-        # 1. Object definition
-        self[name] = DataTable(name, table, lang)
-        # 2. Load selection attributes and variables
-        self[name].selection(query, *args, **kw)
-        # 3. DataTables Attributes setting
-        self[name]._setAttributes()
-
 class DataTable(object):
-    """ The DataTable object class """
+    """ """
 
-    attributes = {
-        "bJQueryUI": True,
-        "sPaginationType": "full_numbers",
-        "bFilter": False,
-        "bProcessing": True,
-        "bServerSide": True,
-    }
+    def __init__(self, name, table, query=None, lang=None):
 
-    def __init__(self, id, table=None, lang=None):
-        """ """
-        self.id = id
-        self.db = None
+        self.name = name
+        self.db = table._db
         self.table = table
         self.lang = lang
-        self.tables = set()
-        self.fields = []
-        #self.virtual_fields = []
-        self.selection_vars = {}
-        self.selection_args = []
+        if query is None and table._tablename in self.db.tables:
+            self.query = table.id>0
+        elif not query is None:
+            self.query = query
+        else:
+            raise ValueError("A query has to be specified")
+        self._conf_columns()
 
-        if not table is None and table._tablename in table._db.tables and table._actual:
-            self.selection(self.table.id>0, self.table.ALL)
-
-    def selection(self, query, *fields, **kw):
+    def __iter__(self):
         """ """
-        self.query = query
-        self.selection_vars = kw
+        for f in  self.table:
+            yield f.name, f
+        for k, f in self.table.items():
+            if not k.startswith('_') and isinstance(f, FieldVirtual):
+                yield f.name, f
 
-        def _appendfield(field):
-            if self.db is None and hasattr(field, '_db'):
-                self.db = field._db
-            if hasattr(field, '_table'):
-                self.tables.add(field._table)
-            if isinstance(field, (Field, FieldVirtual, )):
-                self.fields.append(field)
-            else:
-                # what else?!?
-                pass
+    def items(self):
+        return [i for i in self]
 
-        for field in fields:
+    def __getitem__(self, k):
+        """ maybe an odd definition """
+        if isinstance(k, int):
+            return self.scolumns[k][1]
+        else:
+            return self.kcolumns[k]
 
-            self.selection_args.append(field)
-            if isinstance(field, SQLALL):
-                for ff in field._table.fields:
-                    _appendfield(field._table[ff])
-                # Virtual fields
-                for k,ff in filter(lambda c: isinstance(c[1], FieldVirtual), field._table.items()):
-                    _appendfield(ff)
-            else:
-                _appendfield(field)
+    def _conf_columns(self):
+        self.scolumns = self.items()
+        self.kcolumns = dict(self.scolumns)
 
-        self.attributes["aoColumns"] = self.aoColumns()
+    def dbset(self, query=None, **kw):
+        if query is None:
+            query = self.query
+        else:
+            query = self.query & query
+        return self.db(query, **kw)
 
-    def _setAttributes(self, name=None, **kw):
-        """ """
-        if not "oLanguage" in self.attributes and not "oLanguage" in kw and not self.lang is None:
-            kw["oLanguage"] = {"sUrl": URL('static', plugin_name, 'dataTables.%s.txt' % self.lang)}
-        if not "aoColumns" in kw and not self.attributes.get("aoColumns"):
-            kw["aoColumns"] = self.aoColumns()
-        if not "sAjaxSource" in self.attributes and not "sAjaxSource" in kw:
-            kw["sAjaxSource"] = URL(plugin_name, 'ajax', extension='json', args=(name or self.id, ))
-        self.attributes = dict(self.attributes, **kw)
+    def select(self, query=None, **kw):
+        return self.dbset(query).select(self.table.ALL, **kw)
 
-    def aoColumns(self, **kw):
-        """ """
+    def _aoColumns(self, *aos, **owrs):
+        """Should be used for internal purposes.
+        Returns the value for the aoColumns parameter.
+        aos  {dict}: list of dictionaries which mandatory keys are "name", "label";
+        owrs {dict}: (overwrites) keyed dictionaries with the same mandatory key as above.
+        """
+        
         def _aoColumn(field):
-            custom = kw.get(field.name) or {}
+            if field.name in owrs:
+                custom = owrs.get(field.name)
+                if not 'name' in custom:
+                    custom['name'] = field.name
+            else:
+                custom = {}
+
             defaults = {
                 "mData": field.name,
                 "sName": field.name,
@@ -142,14 +108,26 @@ class DataTable(object):
                 "bSortable": isinstance(field, Field) and field.type not in ('json', ),
             }
             # TODO: gestire meglio la colonna info
-            if field.name == 'info':
+            if field.name=='info':
                 defaults["class"] = 'details-control'
             return dict(defaults, **custom)
+        
+        return map(_aoColumn, self)
 
-        fields = self.fields
-        return map(_aoColumn, fields)
+    def configure(self, **kw):
+        """ Setup the configuration """
+        
+        aoColsSetup = {} if not 'aoColumns' in kw else kw.pop('aoColumns')
+        
+        defaults = dict( 
+            oLanguage = {"sUrl": URL('static', plugin_name, 'dataTables.%s.txt' % self.lang)},
+            sAjaxSource = URL(plugin_name, 'ajax', extension='json', args=(self.name, )),
+            aoColumns = self.aoComumns(**aoColsSetup)
+        )
 
-    def get_html(self, **kw):
+        self.attributes = dict(defaults, **kw)
+
+    def html(self, **kw):
         """ """
         colspan = len(self.attributes['aoColumns'])
         default = {
@@ -159,7 +137,7 @@ class DataTable(object):
             "empty_td": dict(_colspan=colspan, _class="dataTables_empty")
         }
         pars = deep_update(default, kw)
-        msg = "Loading data from server... please wait"
+        msg = T("Loading data from server... please wait")
         return DIV(
             DIV(
                 TABLE(

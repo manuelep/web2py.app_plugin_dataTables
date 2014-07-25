@@ -19,12 +19,10 @@
 #
 ################################################################################
 
-from plugin_dataTables import DataTables, json_to_query
+from plugin_dataTables import DataTable, json_to_query
+from gluon.storage import Storage
 from json import dumps as jsdumps
 from json import loads as jsloads
-
-
-dataTables = DataTables()
 
 def _ajax(dtname, **kw):
     """ Helper function for the ajax source controller """
@@ -53,8 +51,8 @@ def _ajax(dtname, **kw):
         #...
     }
 
-    if not dtname in dataTables:
-        raise HTTP(400, "Oggetto '%s' non definito." % dtname)
+    dt = globals().get(dtname)
+    if dt is None: raise HTTP(400, T("Table with name '%(dtname)s not recognized.'") % locals())
 
     default_params.update(kw)
 
@@ -66,80 +64,45 @@ def _ajax(dtname, **kw):
 
     mCol = [(k,v) for k,v in default_params.items() if k.startswith('mData')]
 
-    dt = dataTables[dtname]
-
     # WARNING: needs tests
     orderby = None
     for n in range(iSortingCols):
         index = int(default_params['iSortCol_%s' % n])
         if default_params.get('sSortDir_%s' % n) in ('desc',):
-            orderby_i = ~dt.fields[index]
+            orderby_i = ~dt[index]
         else:
-            orderby_i = dt.fields[index]
+            orderby_i = dt[index]
         if orderby is None:
             orderby = orderby_i
         else:
             orderby |= orderby_i
-    dt.selection_vars['orderby'] = orderby
+    
+    selection_vars = dict()
+    selection_vars['orderby'] = orderby
 
     Min = 0 if not default_params.get('iDisplayStart') else int(default_params.get('iDisplayStart'))
     Len = default_params.get('iDisplayLength')
     Max = None if not Len else Min + int(Len)
-    dt.selection_vars['limitby'] = None if not Max else (Min, Max, )
+    selection_vars['limitby'] = None if not Max else (Min, Max, )
 
-    query = dt.query
     if '_query' in kw:
-        query &= json_to_query(db, kw['_query'])
-
-    dbset = dt.db(query)
-    res = dbset.select(*dt.selection_args, **dt.selection_vars)
-
-    aaData = []
-    if len(dt.tables)==1:
-        for n,row in enumerate(res):
-            aaData.append({})
-            for k,v in row.as_dict().items():
-                if not dt.table is None and k in dt.table.fields:
-                    field = dt.table[k]
-                    if not field.represent is None:
-                        rendered = field.represent(v, row)
-                    else:
-                        rendered = v
-                else:
-                    rendered = v
-                aaData[n][k] = rendered
-
+        query = json_to_query(db, kw['_query'])
     else:
-        for n,row in enumerate(res):
-            aaData.append({})
+        query = None
 
-            for tabname, values in row.as_dict().items():
-                for field_name, field_value in values.items():
-                    if not dt.table is None and field_name in dt.table.fields:
-                        field = dt.table[field_name]
-                    else:
-                        field = db[tabname]
+    res = dt.select(query, **selection_vars)
+    aaData = []
+    for row in res:
+        data = {}
+        for k,v in filter(lambda c: not callable(c[1]), row.items()):
+            if not dt[k].represent is None:
+                data[k] = dt[k].represent(v, row)
+            else:
+                data[k] = v
+        aaData.append(data)
 
-            nrow = dict(sum(map(lambda d: d.items(), row.as_dict().values()), []))
-            for k,v in nrow.items():
-                if not dt.table is None and k in dt.table.fields:
-                    field = dt.table[k]
-                    if not field.represent is None:
-                        rendered = field.represent(v, nrow)
-                    else:
-                        rendered = v
-                else:
-                    rendered = v
-                    guess_field = [f for f in dt.fields if f.name==k]
-                    if len(guess_field)>0:
-                        field = guess_field[0]
-                        if not field.represent is None:
-                            rendered = field.represent(v, nrow)
-
-                aaData[n][k] = rendered
-
-    iTotalRecords = '%s' % dt.db(dt.query, ignore_common_filters=True).count()
-    iTotalDisplayRecords = '%s' % dbset.count()
+    iTotalRecords = '%s' % dt.dbset(ignore_common_filters=True).count()
+    iTotalDisplayRecords = '%s' % dt.dbset(query).count()
 
     out = {
         "sEcho": sEcho,
