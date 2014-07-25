@@ -39,9 +39,9 @@ jspaths = (
 class DataTable(object):
     """ """
 
-    def __init__(self, name, table, query=None, lang=None):
+    def __init__(self, table, id='mytable', query=None, lang=None):
 
-        self.name = name
+        self.id = id
         self.db = table._db
         self.table = table
         self.lang = lang
@@ -52,6 +52,7 @@ class DataTable(object):
         else:
             raise ValueError("A query has to be specified")
         self._conf_columns()
+        self.configure()
 
     def __iter__(self):
         """ """
@@ -92,7 +93,7 @@ class DataTable(object):
         owrs {dict}: (overwrites) keyed dictionaries with the same mandatory key as above.
         """
         
-        def _aoColumn(field):
+        def _aoColumn(_, field):
             if field.name in owrs:
                 custom = owrs.get(field.name)
                 if not 'name' in custom:
@@ -112,7 +113,7 @@ class DataTable(object):
                 defaults["class"] = 'details-control'
             return dict(defaults, **custom)
         
-        return map(_aoColumn, self)
+        return map(lambda c: _aoColumn(*c), self)
 
     def configure(self, **kw):
         """ Setup the configuration """
@@ -120,10 +121,11 @@ class DataTable(object):
         aoColsSetup = {} if not 'aoColumns' in kw else kw.pop('aoColumns')
         
         defaults = dict( 
-            oLanguage = {"sUrl": URL('static', plugin_name, 'dataTables.%s.txt' % self.lang)},
-            sAjaxSource = URL(plugin_name, 'ajax', extension='json', args=(self.name, )),
-            aoColumns = self.aoComumns(**aoColsSetup)
+            sAjaxSource = URL(plugin_name, 'ajax', extension='json', args=(self.id, )),
+            aoColumns = self._aoColumns(**aoColsSetup)
         )
+        if not self.lang is None:
+            defaults['oLanguage'] = {"sUrl": URL('static', plugin_name, 'dataTables.%s.txt' % self.lang)}
 
         self.attributes = dict(defaults, **kw)
 
@@ -137,7 +139,7 @@ class DataTable(object):
             "empty_td": dict(_colspan=colspan, _class="dataTables_empty")
         }
         pars = deep_update(default, kw)
-        msg = T("Loading data from server... please wait")
+        msg = "Loading data from server... please wait"
         return DIV(
             DIV(
                 TABLE(
