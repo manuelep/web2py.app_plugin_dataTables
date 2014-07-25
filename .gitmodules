@@ -1,3 +1,6 @@
 [submodule "static/plugin_dataTables/DataTables"]
 	path = static/plugin_dataTables/DataTables
 	url = https://github.com/DataTables/DataTables.git
+[submodule "modules/plugin_dal_extensions"]
+	path = modules/plugin_dal_extensions
+	url = git@github.com:manuelep/web2py.plugin_dal_extensions.git
