@@ -27,6 +27,8 @@ git pull origin DataTables
 git checkout DataTables
 ```
 
+(use the same steps to get the [plugin_dal_extensions][] if desidered)
+
 #### 3. Init and update the DataTable submodule
 
 ```sh
@@ -50,3 +52,4 @@ package and upload the files in your app.
 [web2py framwork plugin]: http://web2py.com/books/default/chapter/29/12/components-and-plugins#Plugins
 [jQuery]: http://jquery.com/
 [DataTables]: http://datatables.net/
+[plugin_dal_extensions]:https://github.com/manuelep/web2py.plugin_dal_extensions
